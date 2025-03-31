@@ -161,10 +161,21 @@
     </div>
     <span id="fileNameDisplay">No file chosen</span><br>
     <script>
-        document.getElementById('uploadForm').onsubmit = async function(event) {
+            document.getElementById('uploadForm').onsubmit = async function(event) {
             event.preventDefault();  // Prevent default form submission
 
-            let formData = new FormData(this);
+            let formData = new FormData();
+            let files = document.getElementById('fileInput').files;
+
+            if (files.length === 0) {
+                alert("Please select at least one file.");
+                return;
+            }
+
+            // Append all selected files to FormData
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
 
             // Show loading indicator
             document.getElementById('loading').style.display = 'block';
@@ -178,27 +189,27 @@
                 });
 
                 let data = await response.json();
-
                 document.getElementById('loading').style.display = 'none'; // Hide loading indicator
 
-                if (data["Image Preview"]) {
-                    document.getElementById('preview').src = data["Image Preview"];
-                    document.getElementById('preview').style.display = 'block';
-                }
+                if (data.length > 0) {
+                    let tableHTML = '<table class="output-table">';
+                    tableHTML += '<tr><th>Field</th><th>Value</th></tr>';
 
-                // Convert extracted JSON data into an editable table
-                let extractedData = data["Extracted Data"];
-                let tableHTML = '<table class="output-table">';
-                tableHTML += '<tr><th>Field</th><th>Value</th></tr>';
-                for (let key in extractedData) {
-                    tableHTML += `<tr><td>${key}</td><td contenteditable='true' id='${key}'>${extractedData[key]}</td></tr>`;
+                    // Loop through extracted data for multiple receipts
+                    data.forEach((receiptData, index) => {
+                        tableHTML += `<tr><td colspan="2"><strong>Receipt ${index + 1}</strong></td></tr>`;
+                        for (let key in receiptData) {
+                            tableHTML += `<tr><td>${key}</td><td contenteditable='true' id='${key}'>${receiptData[key]}</td></tr>`;
+                        }
+                    });
+
+                    tableHTML += '</table>';
+                    document.getElementById('output').innerHTML = tableHTML;
+                    document.getElementById('saveBtn').style.display = 'block';
                 }
-                tableHTML += '</table>';
-                document.getElementById('output').innerHTML = tableHTML;
-                document.getElementById('saveBtn').style.display = 'block';
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
-                document.getElementById('output').textContent = "Error processing file.";
+                document.getElementById('output').textContent = "Error processing files.";
             }
         };
 
@@ -220,17 +231,24 @@
         };
 
         document.getElementById('fileInput').addEventListener('change', function() {
-            // Clear the table and preview image when a new file is selected
+            // Clear the table and preview image when new files are selected
             document.getElementById('output').innerHTML = "";
             document.getElementById('preview').style.display = 'none';
             document.getElementById('saveBtn').style.display = 'none';
 
-            // Get the selected file name
-            let fileName = this.files.length > 0 ? this.files[0].name : "No file chosen";
-            
-            // Update the file name display
-            document.getElementById('fileNameDisplay').textContent = fileName;
+            let files = this.files;
+            let fileNames = [];
+
+            if (files.length > 0) {
+                for (let i = 0; i < files.length; i++) {
+                    fileNames.push(files[i].name);
+                }
+                document.getElementById('fileNameDisplay').textContent = fileNames.join(', ');
+            } else {
+                document.getElementById('fileNameDisplay').textContent = "No file chosen";
+            }
         });
+
 
     </script>
 </body>
