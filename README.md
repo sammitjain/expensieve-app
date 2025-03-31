@@ -1,6 +1,6 @@
 # expenSieve: Receipt Processing Web App
 This is a Flask-based web application that allows users to upload multiple receipt images (or PDFs), extract structured expense data using OpenAI's GPT-4o Vision model, and save the parsed information to a CSV file. The application is designed to be mobile-friendly and supports multiple file uploads at once.
-
+![Extracting Information From Multiple Receipts](result_multiple_receipt.png)
 ## Features
 - **Multi-file Upload:** Upload multiple receipt images or PDFs at once.
 - **Automatic Parsing:** Extracts Date, Expense Type, Vendor, City, Currency, Amount, Payment Mode, Time of Transaction, and Remarks.
@@ -68,11 +68,4 @@ This is a Flask-based web application that allows users to upload multiple recei
 - Automatic integration with expense tracking platforms.
 - Improved UI for better mobile experience.
 - Email-based receipt auto-importing.
-
-## License
-MIT License
-
----
-
-Happy tracking! ??
 
