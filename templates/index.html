@@ -77,7 +77,9 @@
         }
 
         .output-table td:first-child {
-            width: 20%; /* Reduce width of the first column */
+            /* width: 20%; Reduce width of the first column */
+            min-width: 200px;
+            max-width: 300px;
             font-weight: bold;
         }
 
@@ -136,6 +138,13 @@
         .custom-file-upload:hover {
             background-color: #4c4c4d;
         }
+        .receipt-thumbnail {
+            width: 200px;  /* Adjust size as needed */
+            height: auto;
+            border-radius: 5px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        }
+
     </style>
 </head>
 <body>
@@ -193,13 +202,24 @@
 
                 if (data.length > 0) {
                     let tableHTML = '<table class="output-table">';
-                    tableHTML += '<tr><th>Field</th><th>Value</th></tr>';
+                    tableHTML += '<tr><th>Receipt</th><th>Field</th><th>Value</th></tr>';
 
                     // Loop through extracted data for multiple receipts
                     data.forEach((receiptData, index) => {
-                        tableHTML += `<tr><td colspan="2"><strong>Receipt ${index + 1}</strong></td></tr>`;
-                        for (let key in receiptData) {
-                            tableHTML += `<tr><td>${key}</td><td contenteditable='true' id='${key}'>${receiptData[key]}</td></tr>`;
+                        let imgSrc = receiptData["Image Preview"];  // Get the image path
+
+                        tableHTML += `<tr>
+                                        <td rowspan="${Object.keys(receiptData['Extracted Data']).length + 1}"  style="width: 200px; text-align: center;">
+                                            <img src="${imgSrc}" alt="Receipt ${index + 1}" class="receipt-thumbnail">
+                                        </td>
+                                        <td colspan="2"><strong>Receipt ${index + 1}</strong></td>
+                                    </tr>`;
+
+                        for (let key in receiptData["Extracted Data"]) {
+                            tableHTML += `<tr>
+                                            <td>${key}</td>
+                                            <td contenteditable='true'>${receiptData["Extracted Data"][key]}</td>
+                                        </tr>`;
                         }
                     });
 
@@ -207,27 +227,51 @@
                     document.getElementById('output').innerHTML = tableHTML;
                     document.getElementById('saveBtn').style.display = 'block';
                 }
+
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('output').textContent = "Error processing files.";
             }
+
         };
 
-        document.getElementById('saveBtn').onclick = async function() {
+        document.getElementById('saveBtn').onclick = async function () {
             let tableRows = document.querySelectorAll('#output tr');
-            let dataToSave = {};
+            let receipts = [];
+            let currentReceipt = {};
+
             tableRows.forEach(row => {
-                let key = row.cells[0].textContent;
-                let value = row.cells[1].textContent;
-                dataToSave[key] = value;
+                let cells = row.cells;
+                if (cells.length === 1) {
+                    // This is a new receipt header row, push previous receipt and reset
+                    if (Object.keys(currentReceipt).length > 0) {
+                        receipts.push(currentReceipt);
+                    }
+                    currentReceipt = {}; // Reset for next receipt
+                } else {
+                    let key = cells[0].textContent.trim();
+                    let value = cells[1].textContent.trim();
+                    currentReceipt[key] = value;
+                }
             });
 
-            let response = await fetch('/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToSave)
-            });
-            alert("Data saved to CSV successfully!");
+            // Push the last receipt after loop
+            if (Object.keys(currentReceipt).length > 0) {
+                receipts.push(currentReceipt);
+            }
+
+            try {
+                let response = await fetch('/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(receipts)  // Send as a list
+                });
+
+                let result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                alert("Error saving data!");
+            }
         };
 
         document.getElementById('fileInput').addEventListener('change', function() {

@@ -24,7 +24,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Initialize OpenAI client
-useOpenAI = False
+useOpenAI = True
 if useOpenAI:
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
@@ -170,23 +170,22 @@ def serve_processed_image(filename):
 CSV_FILE = "expenses.csv"
 @app.route('/save', methods=['POST'])
 def save_to_csv():
-    data = request.json  # JSON received from frontend
-    
+    data_list = request.json  # JSON received from frontend (should be a list of receipts)
+    # Skip the first item if it contains "Receipt #" (indicating it's a header)
+    if "Receipt #" in data_list[0]:
+        data_list = data_list[1:]
+
     # Define CSV headers
     headers = ["Date", "Expense Type", "Vendor", "City", "Currency", "Amount", "Payment Mode", "Time of Transaction", "Remarks"]
     
-    # Ensure all required fields are present
-    row = {key: data.get(key, "") for key in headers}
-
-    # Convert to DataFrame
-    df = pd.DataFrame([row])
+    # Convert list of extracted receipt data into DataFrame
+    df = pd.DataFrame([{key: receipt.get(key, "") for key in headers} for receipt in data_list])
 
     # Check if CSV exists and write accordingly
     file_exists = os.path.exists(CSV_FILE)
     df.to_csv(CSV_FILE, mode='a', index=False, header=not file_exists)
 
     return jsonify({"message": "Data saved successfully", "spreadsheet": df.to_dict(orient="records")})
-
 
 if __name__ == '__main__':
     app.run(debug=True)
