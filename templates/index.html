@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>expenSieve-app</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .thumbnail {
+            display: none;
+            max-width: 200px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 5px;
+        }
+        .output-table {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 70%; /* Increase overall table width */
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 16px;
+        }
+
+        .output-table th, .output-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .output-table th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+            text-align: center;
+            /* min-width: 100px; */
+        }
+
+        .output-table td {
+            background-color: #fff;
+            /* min-width: 300px;  */
+            word-wrap: break-word; /* Ensures text wraps properly */
+        }
+
+
+        .output-table td[contenteditable="true"] {
+            background-color: #fffbcc;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .output-table td[contenteditable="true"]:focus {
+            background-color: #fff3a3;
+            border: 1px solid #f39c12;
+        }
+        #loading {
+            display: none;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+        #loading img {
+            width: 40px;
+            display: block;
+            margin: auto;
+        }
+
+        .output-table td:first-child {
+            width: 20%; /* Reduce width of the first column */
+            font-weight: bold;
+        }
+
+        .output-table td:last-child {
+            width: 80%; /* Increase width of the second column */
+            min-width: 400px;
+        }
+
+        button {
+            background-color: #007bff; /* Nice blue color */
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+
+        button:active {
+            transform: scale(0.98); /* Slight press effect */
+        }
+
+        #saveBtn {
+            background-color: #28a745; /* Green for save action */
+        }
+
+        #saveBtn:hover {
+            background-color: #218838; /* Darker green on hover */
+        }
+
+        /* Hide the default file input */
+        #fileInput {
+            opacity: 0;
+            position: absolute;
+            z-index: -1;
+        }
+
+        /* Style the label to look like a button */
+        .custom-file-upload {
+            background-color: #676c70;
+            color: white;
+            padding: 10px 16px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .custom-file-upload:hover {
+            background-color: #4c4c4d;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Upload Your Receipt</h2>
+    <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+        <form id="uploadForm" enctype="multipart/form-data">
+            <label for="fileInput" class="custom-file-upload">Choose File</label>
+            <input type="file" name="file" id="fileInput" accept="image/*,application/pdf" required>
+            <button type="submit">Upload</button>
+        </form>
+        <button id="saveBtn" style="display: none;">Save to CSV</button>
+    </div>
+
+    <div id="loading">
+        <p>Processing your receipt...</p>
+        <img src="static/loading.gif" alt="Loading">
+    </div>
+
+    <div class="container">
+        <img id="preview" class="thumbnail" src="" alt="Processed Image">
+        <div id="output"></div>
+    </div>
+    <span id="fileNameDisplay">No file chosen</span><br>
+    <script>
+        document.getElementById('uploadForm').onsubmit = async function(event) {
+            event.preventDefault();  // Prevent default form submission
+
+            let formData = new FormData(this);
+
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('output').innerHTML = "Processing...";
+            document.getElementById('preview').style.display = 'none';
+
+            try {
+                let response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                let data = await response.json();
+
+                document.getElementById('loading').style.display = 'none'; // Hide loading indicator
+
+                if (data["Image Preview"]) {
+                    document.getElementById('preview').src = data["Image Preview"];
+                    document.getElementById('preview').style.display = 'block';
+                }
+
+                // Convert extracted JSON data into an editable table
+                let extractedData = data["Extracted Data"];
+                let tableHTML = '<table class="output-table">';
+                tableHTML += '<tr><th>Field</th><th>Value</th></tr>';
+                for (let key in extractedData) {
+                    tableHTML += `<tr><td>${key}</td><td contenteditable='true' id='${key}'>${extractedData[key]}</td></tr>`;
+                }
+                tableHTML += '</table>';
+                document.getElementById('output').innerHTML = tableHTML;
+                document.getElementById('saveBtn').style.display = 'block';
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('output').textContent = "Error processing file.";
+            }
+        };
+
+        document.getElementById('saveBtn').onclick = async function() {
+            let tableRows = document.querySelectorAll('#output tr');
+            let dataToSave = {};
+            tableRows.forEach(row => {
+                let key = row.cells[0].textContent;
+                let value = row.cells[1].textContent;
+                dataToSave[key] = value;
+            });
+
+            let response = await fetch('/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataToSave)
+            });
+            alert("Data saved to CSV successfully!");
+        };
+
+        document.getElementById('fileInput').addEventListener('change', function() {
+            // Clear the table and preview image when a new file is selected
+            document.getElementById('output').innerHTML = "";
+            document.getElementById('preview').style.display = 'none';
+            document.getElementById('saveBtn').style.display = 'none';
+
+            // Get the selected file name
+            let fileName = this.files.length > 0 ? this.files[0].name : "No file chosen";
+            
+            // Update the file name display
+            document.getElementById('fileNameDisplay').textContent = fileName;
+        });
+
+    </script>
+</body>
+</html>
