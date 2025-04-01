@@ -239,23 +239,35 @@
             let tableRows = document.querySelectorAll('#output tr');
             let receipts = [];
             let currentReceipt = {};
+            let receiptIndex = 0;
 
-            tableRows.forEach(row => {
+            tableRows.forEach((row, index) => {
                 let cells = row.cells;
-                if (cells.length === 1) {
-                    // This is a new receipt header row, push previous receipt and reset
+
+                // Skip the header row
+                if (index === 0) return;
+
+                // If the row contains an image (new receipt starts here)
+                if (cells.length > 1 && cells[0].querySelector('img')) {
+                    // Push the previous receipt before starting a new one
                     if (Object.keys(currentReceipt).length > 0) {
                         receipts.push(currentReceipt);
                     }
-                    currentReceipt = {}; // Reset for next receipt
-                } else {
+
+                    // Start a new receipt
+                    currentReceipt = {};
+                    receiptIndex++;
+                    currentReceipt["Receipt #"] = receiptIndex; // Assigning a receipt number
+                } 
+                // If it's a key-value pair row
+                else if (cells.length === 2) {
                     let key = cells[0].textContent.trim();
                     let value = cells[1].textContent.trim();
                     currentReceipt[key] = value;
                 }
             });
 
-            // Push the last receipt after loop
+            // Push the last receipt after the loop
             if (Object.keys(currentReceipt).length > 0) {
                 receipts.push(currentReceipt);
             }
@@ -273,6 +285,7 @@
                 alert("Error saving data!");
             }
         };
+
 
         document.getElementById('fileInput').addEventListener('change', function() {
             // Clear the table and preview image when new files are selected

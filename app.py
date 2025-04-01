@@ -171,9 +171,6 @@ CSV_FILE = "expenses.csv"
 @app.route('/save', methods=['POST'])
 def save_to_csv():
     data_list = request.json  # JSON received from frontend (should be a list of receipts)
-    # Skip the first item if it contains "Receipt #" (indicating it's a header)
-    if "Receipt #" in data_list[0]:
-        data_list = data_list[1:]
 
     # Define CSV headers
     headers = ["Date", "Expense Type", "Vendor", "City", "Currency", "Amount", "Payment Mode", "Time of Transaction", "Remarks"]
